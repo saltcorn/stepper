@@ -5,12 +5,14 @@ const {
   script,
   domReady,
   style,
+  button,
 } = require("@saltcorn/markup/tags");
 const View = require("@saltcorn/data/models/view");
 const Workflow = require("@saltcorn/data/models/workflow");
 const Table = require("@saltcorn/data/models/table");
 const Form = require("@saltcorn/data/models/form");
 const Field = require("@saltcorn/data/models/field");
+const db = require("@saltcorn/data/db");
 const { stateFieldsToWhere } = require("@saltcorn/data/plugin-helper");
 
 const configuration_workflow = () =>
@@ -29,7 +31,7 @@ const configuration_workflow = () =>
               state_fields.some((sf) => sf.name === "id")
           );
           const show_view_opts = show_views.map((v) => v.name);
-
+          fields.push({ name: "id" });
           return new Form({
             fields: [
               {
@@ -75,82 +77,64 @@ const get_state_fields = async (table_id, viewname, { show_view }) => {
 const run = async (
   table_id,
   viewname,
-  { popup_view, latitude_field, longtitude_field, height, popup_width },
-  state,
+  { show_view, order_field, descending },
+  all_state,
   extraArgs
 ) => {
   const id = `map${Math.round(Math.random() * 100000)}`;
-
+  const { after, before, ...state } = all_state;
   const tbl = await Table.findOne({ id: table_id });
   const fields = await tbl.getFields();
   const qstate = await stateFieldsToWhere({ fields, state });
-  const rows = await tbl.getRows(qstate);
-};
+  const nrows = await tbl.countRows(qstate);
+  var offset;
 
-const renderRows = async (
-  table,
-  viewname,
-  { popup_view, latitude_field, longtitude_field, height, popup_width },
-  extra,
-  rows
-) => {
-  if (popup_view) {
-    const popview = await View.findOne({ name: popup_view });
-    if (!popview)
-      return [
-        div(
-          { class: "alert alert-danger" },
-          "Leaflet map incorrectly configured. Cannot find view: ",
-          popup_view
-        ),
-      ];
-    const poptable = await Table.findOne({ id: popview.table_id });
-    const rendered = await popview.viewtemplateObj.renderRows(
-      poptable,
-      popview.name,
-      popview.configuration,
-      extra,
-      rows
-    );
+  if (typeof after !== "undefined") {
+    offset = +after + 1;
+  } else if (typeof before !== "undefined") {
+    offset = +before - 1;
+  } else offset = 0;
+  var hasNext = offset < nrows - 1;
+  var hasPrev = offset > 0;
+  const fetchedRows = await tbl.getRows(qstate, {
+    orderBy: order_field,
+    ...(descending && { orderDesc: true }),
+    limit: 1,
+    offset,
+  });
 
-    return rendered.map((html, ix) => {
-      const row = rows[ix];
-      const the_data = [[[row[latitude_field], row[longtitude_field]], html]];
-      const id = `map${Math.round(Math.random() * 100000)}`;
+  db.sql_log({ nrows, offset, hasNext, hasPrev });
+  const showview = await View.findOne({ name: show_view });
+  const rendered = await showview.viewtemplateObj.renderRows(
+    tbl,
+    showview.name,
+    showview.configuration,
+    extraArgs,
+    fetchedRows
+  );
 
-      return (
-        div({ id, style: `height:${height}px;` }) +
-        script(
-          domReady(`
-${mkMap(the_data, id)}
-points.forEach(pt=>{
-  L.marker(pt[0]).addTo(map)
-    .bindPopup(pt[1], {maxWidth: ${popup_width + 5}, minWidth: ${
-            popup_width - 5
-          }});
-});
-
-`)
-        )
+  return div(
+    rendered.length > 0 ? rendered[0] : "Nothing to see here",
+    hasPrev && button({ onClick: `stepper_prev(${offset})` }, "Previous"),
+    hasNext && button({ onClick: `stepper_next(${offset})` }, "Next"),
+    script(`
+    function stepper_next(offset) {
+      window.location.href = updateQueryStringParameter(
+        removeQueryStringParameter(window.location.href, 'before'),
+        'after',
+        offset
       );
-    });
-  } else {
-    return rows.map((row) => {
-      const id = `map${Math.round(Math.random() * 100000)}`;
-
-      return (
-        div({ id, style: `height:${height}px;` }) +
-        script(
-          domReady(`
-${mkMap([[[row[latitude_field], row[longtitude_field]]]], id)}
-points.forEach(pt=>{
-  L.marker(pt[0]).addTo(map);
-});
-`)
-        )
+    }
+    function stepper_prev(offset) {
+      window.location.href = updateQueryStringParameter(
+        removeQueryStringParameter(window.location.href, 'after'),
+        'before',
+        offset
       );
-    });
-  }
+    }
+    
+    `)
+  );
 };
 
 module.exports = {
@@ -162,7 +146,6 @@ module.exports = {
       get_state_fields,
       configuration_workflow,
       run,
-      renderRows,
     },
   ],
 };
