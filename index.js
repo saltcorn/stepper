@@ -82,18 +82,13 @@ const run = async (
   extraArgs
 ) => {
   const id = `map${Math.round(Math.random() * 100000)}`;
-  const { _after, _before, ...state } = all_state;
+  const { _offset, ...state } = all_state;
   const tbl = await Table.findOne({ id: table_id });
   const fields = await tbl.getFields();
   const qstate = await stateFieldsToWhere({ fields, state });
   const nrows = await tbl.countRows(qstate);
-  var offset;
 
-  if (typeof _after !== "undefined") {
-    offset = +_after + 1;
-  } else if (typeof _before !== "undefined") {
-    offset = +_before - 1;
-  } else offset = 0;
+  const offset = typeof _offset === "undefined" ? 0 : +_offset;
   var hasNext = offset < nrows - 1;
   var hasPrev = offset > 0;
   const fetchedRows = await tbl.getRows(qstate, {
@@ -121,7 +116,7 @@ const run = async (
         {
           disabled: !hasPrev,
           class: "btn btn-secondary",
-          onClick: `stepper_prev(${offset})`,
+          onClick: `set_state_field('_offset',${offset - 1})`,
         },
         "&laquo Previous"
       ),
@@ -130,28 +125,11 @@ const run = async (
         {
           disabled: !hasNext,
           class: "btn btn-secondary",
-          onClick: `stepper_next(${offset})`,
+          onClick: `set_state_field('_offset',${offset + 1})`,
         },
         "Next &raquo"
       )
-    ),
-    script(`
-    function stepper_next(offset) {
-      window.location.href = updateQueryStringParameter(
-        removeQueryStringParameter(window.location.href, '_before'),
-        '_after',
-        offset
-      );
-    }
-    function stepper_prev(offset) {
-      window.location.href = updateQueryStringParameter(
-        removeQueryStringParameter(window.location.href, '_after'),
-        '_before',
-        offset
-      );
-    }
-    
-    `)
+    )
   );
 };
 
