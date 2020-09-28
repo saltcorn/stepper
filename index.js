@@ -82,17 +82,17 @@ const run = async (
   extraArgs
 ) => {
   const id = `map${Math.round(Math.random() * 100000)}`;
-  const { after, before, ...state } = all_state;
+  const { _after, _before, ...state } = all_state;
   const tbl = await Table.findOne({ id: table_id });
   const fields = await tbl.getFields();
   const qstate = await stateFieldsToWhere({ fields, state });
   const nrows = await tbl.countRows(qstate);
   var offset;
 
-  if (typeof after !== "undefined") {
-    offset = +after + 1;
-  } else if (typeof before !== "undefined") {
-    offset = +before - 1;
+  if (typeof _after !== "undefined") {
+    offset = +_after + 1;
+  } else if (typeof _before !== "undefined") {
+    offset = +_before - 1;
   } else offset = 0;
   var hasNext = offset < nrows - 1;
   var hasPrev = offset > 0;
@@ -103,7 +103,6 @@ const run = async (
     offset,
   });
 
-  db.sql_log({ nrows, offset, hasNext, hasPrev });
   const showview = await View.findOne({ name: show_view });
   const rendered = await showview.viewtemplateObj.renderRows(
     tbl,
@@ -115,20 +114,39 @@ const run = async (
 
   return div(
     rendered.length > 0 ? rendered[0] : "Nothing to see here",
-    hasPrev && button({ onClick: `stepper_prev(${offset})` }, "Previous"),
-    hasNext && button({ onClick: `stepper_next(${offset})` }, "Next"),
+    div(
+      { class: "d-flex justify-content-between" },
+
+      button(
+        {
+          disabled: !hasPrev,
+          class: "btn btn-secondary",
+          onClick: `stepper_prev(${offset})`,
+        },
+        "&laquo Previous"
+      ),
+      div(`${offset + 1} / ${nrows}`),
+      button(
+        {
+          disabled: !hasNext,
+          class: "btn btn-secondary",
+          onClick: `stepper_next(${offset})`,
+        },
+        "Next &raquo"
+      )
+    ),
     script(`
     function stepper_next(offset) {
       window.location.href = updateQueryStringParameter(
-        removeQueryStringParameter(window.location.href, 'before'),
-        'after',
+        removeQueryStringParameter(window.location.href, '_before'),
+        '_after',
         offset
       );
     }
     function stepper_prev(offset) {
       window.location.href = updateQueryStringParameter(
-        removeQueryStringParameter(window.location.href, 'after'),
-        'before',
+        removeQueryStringParameter(window.location.href, '_after'),
+        '_before',
         offset
       );
     }
