@@ -99,6 +99,13 @@ const run = async (
   });
 
   const showview = await View.findOne({ name: show_view });
+  if (!showview)
+    return div(
+      { class: "alert alert-danger" },
+      "Stepper incorrectly configured. Cannot find view: ",
+      show_view
+    );
+
   const rendered = await showview.viewtemplateObj.renderRows(
     tbl,
     showview.name,
