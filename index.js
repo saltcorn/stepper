@@ -26,7 +26,7 @@ const configuration_workflow = () =>
           const show_views = await View.find_table_views_where(
             context.table_id,
             ({ state_fields, viewtemplate, viewrow }) =>
-              viewtemplate.renderRows &&
+              (viewtemplate.runMany || viewtemplate.renderRows) &&
               viewrow.name !== context.viewname &&
               state_fields.some((sf) => sf.name === "id")
           );
@@ -91,12 +91,7 @@ const run = async (
   const offset = typeof _offset === "undefined" ? 0 : +_offset;
   var hasNext = offset < nrows - 1;
   var hasPrev = offset > 0;
-  const fetchedRows = await tbl.getRows(qstate, {
-    orderBy: order_field,
-    ...(descending && { orderDesc: true }),
-    limit: 1,
-    offset,
-  });
+  
 
   const showview = await View.findOne({ name: show_view });
   if (!showview)
@@ -106,16 +101,16 @@ const run = async (
       show_view
     );
 
-  const rendered = await showview.viewtemplateObj.renderRows(
-    tbl,
-    showview.name,
-    showview.configuration,
-    extraArgs,
-    fetchedRows
-  );
+  const sresps = await showview.runMany(state, {
+    ...extraArgs,
+    orderBy: order_field,
+    ...(descending && { orderDesc: true }),
+    limit: 1,
+    offset,
+  });
 
   return div(
-    rendered.length > 0 ? rendered[0] : "Nothing to see here",
+    sresps.length > 0 ? sresps[0].html : "Nothing to see here",
     div(
       { class: "d-flex justify-content-between" },
 
