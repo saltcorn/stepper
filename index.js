@@ -28,10 +28,9 @@ const configuration_workflow = () =>
             ({ state_fields, viewtemplate, viewrow }) =>
               (viewtemplate.runMany || viewtemplate.renderRows) &&
               viewrow.name !== context.viewname &&
-              state_fields.some((sf) => sf.name === "id")
+              state_fields.some((sf) => sf.primary_key || sf.name === "id")
           );
           const show_view_opts = show_views.map((v) => v.name);
-          fields.push({ name: "id" });
           return new Form({
             fields: [
               {
@@ -91,7 +90,6 @@ const run = async (
   const offset = typeof _offset === "undefined" ? 0 : +_offset;
   var hasNext = offset < nrows - 1;
   var hasPrev = offset > 0;
-  
 
   const showview = await View.findOne({ name: show_view });
   if (!showview)
@@ -145,5 +143,6 @@ module.exports = {
       configuration_workflow,
       run,
     },
+    require("./nextprevlinks"),
   ],
 };
