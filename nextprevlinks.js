@@ -3,9 +3,9 @@ const View = require("@saltcorn/data/models/view");
 const Workflow = require("@saltcorn/data/models/workflow");
 const Table = require("@saltcorn/data/models/table");
 const Form = require("@saltcorn/data/models/form");
-const Field = require("@saltcorn/data/models/field");
 const db = require("@saltcorn/data/db");
 const { stateFieldsToWhere } = require("@saltcorn/data/plugin-helper");
+const { isNode } = require("@saltcorn/data/utils");
 
 const configuration_workflow = () =>
   new Workflow({
@@ -83,31 +83,22 @@ const run = async (
   viewname,
   { link_view, label_field, fixed_label, order_field, descending },
   state,
-  extraArgs
+  extraArgs,
+  { rowsQuery }
 ) => {
+  const { rows } = await rowsQuery(state);
   const table = await Table.findOne({ id: table_id });
   const fields = await table.getFields();
-  const qstate = await stateFieldsToWhere({ fields, state });
   const pk = fields.find((f) => f.primary_key);
-  const schema = db.getTenantSchemaPrefix();
-  const current_row = await table.getRow(qstate);
-  if (!current_row) return "";
-  const dir = descending ? "desc" : "asc";
-  const cmp = descending ? "<" : ">";
-  const {
-    rows,
-  } = await db.query(
-    `select * from ${schema}"${table.name}" where ${order_field} ${cmp} $1 OR (${order_field}=$2 AND ${pk.name}${cmp} $3) order by ${order_field} ${dir}, ${pk.name} ${dir} limit 1`,
-    [current_row[order_field], current_row[order_field], current_row[pk.name]]
-  );
   if (rows && rows.length > 0) {
+    const target = `/view/${encodeURIComponent(link_view)}?${encodeURIComponent(
+      pk.name
+    )}=${encodeURIComponent(rows[0][pk.name])}`;
     return (
       (label_field ? fixed_label || "" : "") +
       a(
         {
-          href: `/view/${encodeURIComponent(link_view)}?${encodeURIComponent(
-            pk.name
-          )}=${encodeURIComponent(rows[0][pk.name])}`,
+          href: isNode() ? target : `javascript:parent.execLink('${target}')`,
         },
         `${label_field ? text(rows[0][label_field]) : fixed_label || ""}`
       )
@@ -120,4 +111,31 @@ module.exports = {
   get_state_fields,
   configuration_workflow,
   run,
+  queries: ({
+    table_id,
+    name,
+    configuration: { order_field, descending },
+    req,
+    res,
+  }) => ({
+    async rowsQuery(state) {
+      const table = await Table.findOne({ id: table_id });
+      const fields = await table.getFields();
+      const qstate = await stateFieldsToWhere({ fields, state });
+      const pk = fields.find((f) => f.primary_key);
+      const schema = db.getTenantSchemaPrefix();
+      const current_row = await table.getRow(qstate);
+      if (!current_row) return "";
+      const dir = descending ? "desc" : "asc";
+      const cmp = descending ? "<" : ">";
+      return await db.query(
+        `select * from ${schema}"${table.name}" where ${order_field} ${cmp} $1 OR (${order_field}=$2 AND ${pk.name}${cmp} $3) order by ${order_field} ${dir}, ${pk.name} ${dir} limit 1`,
+        [
+          current_row[order_field],
+          current_row[order_field],
+          current_row[pk.name],
+        ]
+      );
+    },
+  }),
 };
