@@ -73,23 +73,30 @@ const get_state_fields = async (table_id, viewname, { show_view }) => {
   });
 };
 
+const count_rows_query_impl = async (table_id, state) => {
+  const tbl = await Table.findOne({ id: table_id });
+  const fields = await tbl.getFields();
+  const qstate = await stateFieldsToWhere({ fields, state });
+  return await tbl.countRows(qstate);
+};
+
 const run = async (
   table_id,
   viewname,
   { show_view, order_field, descending },
   all_state,
-  extraArgs
+  extraArgs,
+  queriesObj
 ) => {
   const id = `map${Math.round(Math.random() * 100000)}`;
   const { _offset, ...state } = all_state;
-  const tbl = await Table.findOne({ id: table_id });
-  const fields = await tbl.getFields();
-  const qstate = await stateFieldsToWhere({ fields, state });
-  const nrows = await tbl.countRows(qstate);
 
+  const nrows = queriesObj?.count_rows_query
+    ? await queriesObj.count_rows_query(state)
+    : await count_rows_query_impl(table_id, state);
   const offset = typeof _offset === "undefined" ? 0 : +_offset;
-  var hasNext = offset < nrows - 1;
-  var hasPrev = offset > 0;
+  const hasNext = offset < nrows - 1;
+  const hasPrev = offset > 0;
 
   const showview = await View.findOne({ name: show_view });
   if (!showview)
@@ -142,6 +149,11 @@ module.exports = {
       get_state_fields,
       configuration_workflow,
       run,
+      queries: ({ table_id, name, configuration: {}, req, res }) => ({
+        async count_rows_query(state) {
+          return await count_rows_query_impl(table_id, state);
+        },
+      }),
     },
     require("./nextprevlinks"),
   ],
