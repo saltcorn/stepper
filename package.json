@@ -1,6 +1,6 @@
 {
   "name": "@saltcorn/stepper",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Step through a set of rows",
   "main": "index.js",
   "dependencies": {
