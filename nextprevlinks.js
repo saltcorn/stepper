@@ -90,7 +90,11 @@ const queryImpl = async (table_id, state, descending, order_field) => {
   const dir = descending ? "desc" : "asc";
   const cmp = descending ? "<" : ">";
   return await db.query(
-    `select * from ${schema}"${table.name}" where ${order_field} ${cmp} $1 OR (${order_field}=$2 AND ${pk.name}${cmp} $3) order by ${order_field} ${dir}, ${pk.name} ${dir} limit 1`,
+    `select * from ${schema}"${db.sqlsanitize(
+      table.name
+    )}" where ${order_field} ${cmp} $1 OR (${order_field}=$2 AND ${
+      pk.name
+    }${cmp} $3) order by ${order_field} ${dir}, ${pk.name} ${dir} limit 1`,
     [current_row[order_field], current_row[order_field], current_row[pk.name]]
   );
 };
