@@ -63,6 +63,33 @@ const configuration_workflow = () =>
                 type: "Bool",
                 required: true,
               },
+              {
+                name: "link_style",
+                label: __("Link Style"),
+                type: "String",
+                required: true,
+                attributes: {
+                  asideNext: true,
+                  options: [
+                    { name: "", label: __("Link") },
+                    { name: "btn btn-primary", label: __("Primary button") },
+                    {
+                      name: "btn btn-secondary",
+                      label: __("Secondary button"),
+                    },
+                    { name: "btn btn-success", label: __("Success button") },
+                    { name: "btn btn-danger", label: __("Danger button") },
+                    {
+                      name: "btn btn-outline-primary",
+                      label: __("Primary outline button"),
+                    },
+                    {
+                      name: "btn btn-outline-secondary",
+                      label: __("Secondary outline button"),
+                    },
+                  ],
+                },
+              },
             ],
           });
         },
@@ -102,7 +129,7 @@ const queryImpl = async (table_id, state, descending, order_field) => {
 const run = async (
   table_id,
   viewname,
-  { link_view, label_field, fixed_label, order_field, descending },
+  { link_view, label_field, fixed_label, order_field, descending, link_style },
   state,
   extraArgs,
   queriesObj
@@ -121,6 +148,7 @@ const run = async (
       (label_field ? fixed_label || "" : "") +
       a(
         {
+          class: link_style,
           href: isNode ? target : `javascript:parent.execLink('${target}')`,
         },
         `${label_field ? text(rows[0][label_field]) : fixed_label || ""}`
