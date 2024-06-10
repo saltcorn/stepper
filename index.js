@@ -149,7 +149,7 @@ module.exports = {
       get_state_fields,
       configuration_workflow,
       run,
-      queries: ({ table_id, name, configuration: {}, req, res }) => ({
+      queries: ({ table_id, name, configuration, req, res }) => ({
         async count_rows_query(state) {
           return await count_rows_query_impl(table_id, state);
         },

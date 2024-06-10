@@ -65,27 +65,27 @@ const configuration_workflow = () =>
               },
               {
                 name: "link_style",
-                label: __("Link Style"),
+                label: "Link Style",
                 type: "String",
                 required: true,
                 attributes: {
                   asideNext: true,
                   options: [
-                    { name: "", label: __("Link") },
-                    { name: "btn btn-primary", label: __("Primary button") },
+                    { name: "", label: "Link" },
+                    { name: "btn btn-primary", label: "Primary button" },
                     {
                       name: "btn btn-secondary",
-                      label: __("Secondary button"),
+                      label: "Secondary button",
                     },
-                    { name: "btn btn-success", label: __("Success button") },
-                    { name: "btn btn-danger", label: __("Danger button") },
+                    { name: "btn btn-success", label: "Success button" },
+                    { name: "btn btn-danger", label: "Danger button" },
                     {
                       name: "btn btn-outline-primary",
-                      label: __("Primary outline button"),
+                      label: "Primary outline button",
                     },
                     {
                       name: "btn btn-outline-secondary",
-                      label: __("Secondary outline button"),
+                      label: "Secondary outline button",
                     },
                   ],
                 },
