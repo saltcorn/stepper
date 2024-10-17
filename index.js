@@ -157,4 +157,5 @@ module.exports = {
     },
     require("./nextprevlinks"),
   ],
+  ready_for_mobile: true,
 };
